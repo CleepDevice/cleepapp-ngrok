@@ -1,0 +1,34 @@
+<div layout="column" layout-padding ng-cloak>
+
+    <config-section cl-title="Configuration" cl-icon="cog"></config-section>
+    <config-text
+        cl-title="Configure ngrok auth key"
+        cl-model="$ctrl.config.authkey" cl-click="$ctrl.setAuthKey(value)"
+    ></config-text>
+    <config-switch
+        cl-title="Auto start tunnel when application starts"
+        cl-model="$ctrl.config.autostart" cl-click="$ctrl.setAutoStart(value)"
+    ></config-switch>
+
+    <config-section cl-title="Service control" cl-icon="remote"></config-section>
+    <config-buttons
+        cl-title="Start tunnel" cl-btn-icon="start"
+        cl-buttons="$ctrl.serviceButtons"
+    ></config-buttons>
+    <config-comment
+        cl-title="Device public url" cl-comment="$ctrl.publicUrl" cl-mode="html"
+    ></config-comment>
+
+    <config-section cl-title="Tunnel info" cl-icon="information"></config-section>
+    <config-button
+        cl-icon="" cl-btn-icon="refresh" cl-click="$ctrl.getTunnelInfo()" cl-btn-label="Get info"
+    ></config-button>
+    <config-comment
+        cl-title="Tunnel connections metrics" cl-comment="$ctrl.metrics.connections" cl-mode="markdown"
+    ></config-comment>
+    <config-comment
+        cl-title="Tunnel durations metrics (in seconds)" cl-comment="$ctrl.metrics.durations" cl-mode="markdown"
+    ></config-comment>
+
+</div>
+    

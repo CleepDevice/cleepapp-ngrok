@@ -1,0 +1,14 @@
+{
+    "icon": "arrow-decision",
+    "global": {
+        "js": ["ngrok.service.js"],
+        "html": [],
+        "css": []
+    },
+    "config": {
+        "js": ["ngrok.config.js"],
+        "html": ["ngrok.config.html"],
+        "css": []
+    }
+}
+    
