@@ -58,12 +58,6 @@ class Ngrok(CleepModule):
         self.__tunnel_status = Ngrok.TUNNEL_STOPPED
         self.tunnel_update_event = self._get_event("ngrok.tunnel.update")
 
-    def _configure(self):
-        """
-        Configure app
-        """
-        pass
-
     def _on_start(self):
         """
         Start app
@@ -93,7 +87,10 @@ class Ngrok(CleepModule):
         """
         Stop app
         """
-        self.__stop_tunnel()
+        try:
+            self.__remove_cleep_tunnel(send_event=False)
+        except:
+            pass
 
     def get_module_config(self):
         """
@@ -115,7 +112,7 @@ class Ngrok(CleepModule):
         config = super().get_module_config()
         config.update(
             {
-                "publicurl": tunnel_info.get("public_url"),
+                "publicurl": tunnel_info.get("publicurl"),
                 "tunnelstatus": self.__tunnel_status,
             }
         )
@@ -127,12 +124,16 @@ class Ngrok(CleepModule):
 
         Args:
             auto_start (bool): True to start tunnel when app starts
+
+        Raises:
+            CommandError: if error saving config
         """
         self._check_parameters(
             [{"name": "auto_start", "value": auto_start, "type": bool}]
         )
 
-        self._set_config_field("autostart", auto_start)
+        if not self._set_config_field("autostart", auto_start):
+            raise CommandError("Unable to save config")
 
     def set_auth_key(self, auth_key):
         """
@@ -142,13 +143,15 @@ class Ngrok(CleepModule):
             auth_key (str): ngrok auth key
 
         Raises:
-            CommandError: if authorization failed
+            CommandError: if authorization failed or error saving config
         """
         self._check_parameters([{"name": "auth_key", "value": auth_key}])
 
         if self.__authorize_agent(auth_key):
-            self._set_config_field("authkey", auth_key)
-            return
+            if self._set_config_field("authkey", auth_key):
+                return
+            else:
+                raise CommandError("Unable to save config")
 
         raise CommandError("Can't authorize with specified key")
 
@@ -161,7 +164,7 @@ class Ngrok(CleepModule):
 
             {
                 id (str): tunnel identifier,
-                public_url (str) : tunnel public url
+                publicurl (str) : tunnel public url
                 proto (str): tunnel protocal (http|https)
                 metrics (dict): tunnel metrics (see https://ngrok.com/docs/agent/api/#request-2),
             }
@@ -181,7 +184,7 @@ class Ngrok(CleepModule):
 
             {
                 id (str): tunnel identifier,
-                public_url (str) : tunnel public url
+                publicurl (str) : tunnel public url
                 proto (str): tunnel protocal (http|https)
                 metrics (dict): tunnel metrics (see https://ngrok.com/docs/agent/api/#request-2),
             }
@@ -196,14 +199,14 @@ class Ngrok(CleepModule):
                 resp_json = resp.json()
                 return {
                     "id": resp_json.get("ID"),
-                    "public_url": resp_json.get("public_url"),
+                    "publicurl": resp_json.get("public_url"),
                     "proto": resp_json.get("proto"),
                     "metrics": resp_json.get("metrics"),
                 }
             return None
         except Exception as error:
             self.logger.error(
-                f"Error getting cleep tunnel info from {url}: {error.message}"
+                f"Error getting cleep tunnel info from {url}: {str(error)}"
             )
             return None
 
@@ -249,7 +252,7 @@ class Ngrok(CleepModule):
         if resp.status_code == 201:
             self.__tunnel_status = Ngrok.TUNNEL_STARTED
             self.logger.info("Ngrok Cleep tunnel started")
-            self.__send_tunnel_event()
+            self.__send_tunnel_event(delayed=True)
             return True
 
         self.__tunnel_status = Ngrok.TUNNEL_ERROR
@@ -259,9 +262,12 @@ class Ngrok(CleepModule):
         self.__send_tunnel_event()
         return False
 
-    def __remove_cleep_tunnel(self):
+    def __remove_cleep_tunnel(self, send_event=True):
         """
         Remove cleep tunnel to avoid sharing device access when app is stopped
+
+        Args:
+            send_event (bool): True to send event (default True)
         """
         # DELETE http://localhost:4040/api/tunnels/cleep
         url = f"{self.AGENT_CLI_BASE_URL}/tunnels/{self.CLEEP_TUNNEL_NAME}"
@@ -270,11 +276,11 @@ class Ngrok(CleepModule):
         if resp.status_code == 204:
             self.__tunnel_status = Ngrok.TUNNEL_STOPPED
             self.logger.info("Ngrok Cleep tunnel stopped")
-            self.__send_tunnel_event()
+            self.__send_tunnel_event(send_event)
             return True
 
-        self.logger.warn("Ngrock Cleep tunnel failed to stop (not started?)")
-        self.__send_tunnel_event()
+        self.logger.warning("Ngrock Cleep tunnel failed to stop (not started?)")
+        self.__send_tunnel_event(send_event)
         return False
 
     def __authorize_agent(self, auth_key):
@@ -372,18 +378,27 @@ class Ngrok(CleepModule):
         )
         return False
 
-    def __send_tunnel_event(self):
+    def __send_tunnel_event(self, send_event=True, delayed=False):
         """
         Send tunnel event
+
+        Args:
+            send_event (bool): True to send event (default True)
+            delayed (bool): Defer event sent. Useful to wait public url to be set (default False)
         """
+        if not send_event:
+            return
 
         def send_event():
             tunnel_info = self.__get_tunnel_info() or {}
             params = {
                 "status": self.__tunnel_status,
-                "publicurl": tunnel_info.get("public_url"),
+                "publicurl": tunnel_info.get("publicurl"),
             }
             self.tunnel_update_event.send(params=params)
 
-        timer = Timer(1.0, send_event)
-        timer.start()
+        if delayed:
+            timer = Timer(2.0, send_event)
+            timer.start()
+        else:
+            send_event()
