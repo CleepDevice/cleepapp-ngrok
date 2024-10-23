@@ -17,7 +17,7 @@ class Ngrok(CleepModule):
     """
 
     MODULE_AUTHOR = "Cleep"
-    MODULE_VERSION = "0.0.0"
+    MODULE_VERSION = "1.0.0"
     MODULE_DEPS = []
     MODULE_DESCRIPTION = "Ngrok service connector"
     MODULE_LONGDESCRIPTION = (
