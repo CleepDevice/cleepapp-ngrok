@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from cleep.libs.tests import session
 import unittest
 import logging
 import sys
@@ -15,9 +16,8 @@ from cleep.exception import (
     CommandInfo,
     Unauthorized,
 )
-from cleep.libs.tests import session
 from cleep.libs.tests.common import get_log_level
-from mock import Mock, patch
+from unittest.mock import Mock, patch
 import responses
 
 LOG_LEVEL = get_log_level()
@@ -30,20 +30,6 @@ class DummyProc:
     def name(self):
         return self.__name
 
-
-# Unit testing is part of a development, it's why Cleep requires to have application code tested to
-# guarantee a certain source code quality.
-#
-# If you new to unit testing, you can find a good introduction here https://realpython.com/python-testing/
-# Cleep uses unittest framework for which you can find documentation here https://docs.python.org/3/library/unittest.html
-#
-# You can launch all your tests manually using this command:
-#   python3 -m unittest test_ngrok.TestNgrok
-# or a specific test with command:
-#   python3 -m unittest test_ngrok.TestNgrok.test__on_configure
-# You can get tests coverage with command:
-#   coverage run --omit=*/lib/python*/*,test_* --concurrency=thread test_ngrok.py; coverage report -m -i
-# or you can simply use developer application that allows you to perform all tests and coverage directly from web interface
 @patch("backend.ngrok.Console")
 class TestNgrok(unittest.TestCase):
     TUNNEL_INFO = {
@@ -495,7 +481,7 @@ class TestNgrok(unittest.TestCase):
     def test__remove_cleep_tunnel(self, MockConsole):
         self.init()
         self.resp_mock.replace(
-            responses.DELETE, self.tunnel_delete_url, json={}, status=204
+            responses.DELETE, self.tunnel_delete_url, status=204
         )
         self.resp_mock.replace(
             responses.GET, self.tunnel_get_url, json=self.TUNNEL_INFO
