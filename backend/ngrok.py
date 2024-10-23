@@ -389,7 +389,7 @@ class Ngrok(CleepModule):
         if not send_event:
             return
 
-        def send_event():
+        def timer_send_event():
             tunnel_info = self.__get_tunnel_info() or {}
             params = {
                 "status": self.__tunnel_status,
@@ -398,7 +398,7 @@ class Ngrok(CleepModule):
             self.tunnel_update_event.send(params=params)
 
         if delayed:
-            timer = Timer(2.0, send_event)
+            timer = Timer(2.0, timer_send_event)
             timer.start()
         else:
-            send_event()
+            timer_send_event()
