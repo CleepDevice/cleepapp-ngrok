@@ -37,7 +37,7 @@ function($rootScope, cleepService, toastService, ngrokService) {
             ngrokService.setAuthKey(value)
                 .then((resp) => {
                     if (!resp.error) {
-                        toastService.success('Auth key saved');
+                        toastService.success('Auth key saved, you can start tunnel');
                     }
                 });
         }
@@ -84,6 +84,7 @@ function($rootScope, cleepService, toastService, ngrokService) {
         }
 
         self.startTunnel = function () {
+            toastService.loading('Launching tunnel')
             ngrokService.startTunnel()
                 .then((resp) => {
                     if (!resp.error) {

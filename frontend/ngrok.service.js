@@ -29,7 +29,7 @@ function(rpcService, cleepService) {
     };
 
     self.startTunnel = function () {
-        return rpcService.sendCommand('start_tunnel', 'ngrok')
+        return rpcService.sendCommand('start_tunnel', 'ngrok', undefined, 30)
             .then(() => cleepService.reloadModuleConfig('ngrok'));
     }
 
