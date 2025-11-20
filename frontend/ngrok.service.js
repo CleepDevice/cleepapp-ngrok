@@ -37,4 +37,8 @@ function(rpcService, cleepService) {
         return rpcService.sendCommand('stop_tunnel', 'ngrok')
             .then(() => cleepService.reloadModuleConfig('ngrok'));
     }
+
+    self.updateBinary = function() {
+        return rpcService.sendCommand('update_binary', 'ngrok');
+    }
 }]);

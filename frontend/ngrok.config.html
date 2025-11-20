@@ -9,8 +9,18 @@
         cl-title="Auto start tunnel when application starts"
         cl-model="$ctrl.config.autostart" cl-click="$ctrl.setAutoStart(value)"
     ></config-switch>
+    <config-button
+        cl-title="Update ngrok binary"
+        cl-subtitle="After clicking on the update button ngrok service will updated if necessary without any other action"
+        cl-click="$ctrl.updateBinary()"
+        cl-btn-label="Launch update"
+        cl-btn-icon="update"
+    ></config-button>
 
     <config-section cl-title="Service control" cl-icon="remote"></config-section>
+    <config-comment
+        cl-title="Agent status" cl-comment="$ctrl.agentStatus" cl-mode="html"
+    ></config-comment>
     <config-buttons
         cl-title="Start tunnel" cl-btn-icon="start"
         cl-buttons="$ctrl.serviceButtons"

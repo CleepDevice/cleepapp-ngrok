@@ -13,6 +13,7 @@ function($rootScope, cleepService, toastService, ngrokService) {
         self.config = {};
         self.serviceButtons = [];
         self.publicUrl = '';
+        self.agentStatus = '';
         self.metrics = {
             connections: 'No metrics',
             durations: 'No metrics',
@@ -119,17 +120,40 @@ function($rootScope, cleepService, toastService, ngrokService) {
             }
         }
 
-        $rootScope.$watch(function() {
-            return cleepService.modules['ngrok'].config;
-        }, function(newConfig) {
-            if(newConfig && Object.keys(newConfig).length) {
-                Object.assign(self.config, newConfig);
-                self.setPublicUrl(self.config.publicurl || self.config.tunnelstatus);
+        self.setAgentStatus = function(agentError) {
+            if (agentError) {
+                self.agentStatus = agentError.replace(/(\\r\\n|\\n)/gi, '<br/>');
+            } else {
+                self.agentStatus = "Agent is running";
             }
-        }, true);
+        }
+
+        self.updateBinary = function() {
+            ngrokService.updateBinary()
+                .then((resp) => {
+                    if (!resp.error) {
+                        toastService.success('Ngrok service binary will be updated if necessary');
+                    }
+                });
+        };
+
+        $rootScope.$watch(
+            function() {
+                return cleepService.modules['ngrok'].config;
+            },
+            function(newConfig) {
+                if (newConfig && Object.keys(newConfig).length) {
+                    Object.assign(self.config, newConfig);
+                    self.setPublicUrl(self.config.publicurl || self.config.tunnelstatus);
+                    self.setAgentStatus(self.config.agenterror);
+                }
+            },
+            true
+        );
 
         $rootScope.$on('ngrok.tunnel.update', (event, uuid, params) => {
             self.setPublicUrl(params.publicurl || params.status);
+            self.setAgentStatus(params.agenterror);
         });
     };
 

@@ -87,79 +87,71 @@ class TestNgrok(unittest.TestCase):
         if start:
             self.session.start_module(self.module)
 
-    @patch("backend.ngrok.Timer")
-    def test_on_start_should_start_tunnel(self, MockTimer, MockConsole):
+    def test_on_start_should_start_tunnel(self, MockConsole):
         self.init(start=False, mock_on_start=False)
         self.module._Ngrok__install_agent = Mock(return_value=True)
         self.module._Ngrok__start_agent = Mock(return_value=True)
         self.module._get_config_field = Mock(side_effect=[True])
         self.module._Ngrok__is_tunnel_established = Mock(return_value=False)
+        self.session.task_factory.create_task = Mock()
 
         self.module._on_start()
 
-        MockTimer.assert_called_with(10.0, session.AnyArg())
+        self.session.task_factory.create_task.assert_called_with(120.0, session.AnyArg())
 
-    @patch("backend.ngrok.Timer")
-    def test_on_start_should_not_start_tunnel_if_agent_not_installed(self, MockTimer, MockConsole):
+    def test_on_start_should_not_start_tunnel_if_agent_not_installed(self, MockConsole):
         self.init(start=False, mock_on_start=False)
         self.module._Ngrok__install_agent = Mock(return_value=False)
+        self.session.task_factory.create_task = Mock()
 
         self.module._on_start()
 
-        MockTimer.assert_not_called()
+        self.session.task_factory.create_task.assert_not_called()
 
-    @patch("backend.ngrok.Timer")
-    def test_on_start_should_not_start_tunnel_if_agent_is_not_started(
-        self, MockTimer, MockConsole
-    ):
+    def test_on_start_should_not_start_tunnel_if_agent_is_not_started(self, MockConsole):
         self.init(start=False, mock_on_start=False)
         self.module._Ngrok__install_agent = Mock(return_value=True)
         self.module._Ngrok__start_agent = Mock(return_value=False)
+        self.session.task_factory.create_task = Mock()
 
         self.module._on_start()
 
-        MockTimer.assert_not_called()
+        self.session.task_factory.create_task.assert_not_called()
 
-    @patch("backend.ngrok.Timer")
-    def test_on_start_should_not_start_tunnel_if_autostart_is_false(
-        self, MockTimer, MockConsole
-    ):
+    def test_on_start_should_not_start_tunnel_if_autostart_is_false(self, MockConsole):
         self.init(start=False, mock_on_start=False)
         self.module._Ngrok__install_agent = Mock(return_value=True)
         self.module._Ngrok__start_agent = Mock(return_value=True)
         self.module._get_config_field = Mock(side_effect=[False])
+        self.session.task_factory.create_task = Mock()
 
         self.module._on_start()
 
-        MockTimer.assert_not_called()
+        self.session.task_factory.create_task.assert_not_called()
 
-    @patch("backend.ngrok.Timer")
-    def test_on_start_should_not_start_tunnel_if_agent_fails_to_start(
-        self, MockTimer, MockConsole
-    ):
+    def test_on_start_should_not_start_tunnel_if_agent_fails_to_start(self, MockConsole):
         self.init(start=False, mock_on_start=False)
         self.module._get_config_field = Mock(side_effect=["auth-key", True])
         self.module._Ngrok__is_agent_running = Mock(return_value=False)
         self.module._Ngrok__authorize_agent = Mock(return_value=True)
         self.module._Ngrok__start_agent = Mock(return_value=False)
+        self.session.task_factory.create_task = Mock()
 
         self.module._on_start()
 
-        MockTimer.assert_not_called()
+        self.session.task_factory.create_task.assert_not_called()
 
-    @patch("backend.ngrok.Timer")
-    def test_on_start_should_not_start_tunnel_if_tunnel_already_started(
-        self, MockTimer, MockConsole
-    ):
+    def test_on_start_should_not_start_tunnel_if_tunnel_already_started(self, MockConsole):
         self.init(start=False, mock_on_start=False)
         self.module._get_config_field = Mock(side_effect=["auth-key", True])
         self.module._Ngrok__install_agent = Mock(return_value=True)
         self.module._Ngrok__start_agent = Mock(return_value=True)
         self.module._Ngrok__is_tunnel_established = Mock(return_value=True)
+        self.session.task_factory.create_task = Mock()
 
         self.module._on_start()
 
-        MockTimer.assert_not_called()
+        self.session.task_factory.create_task.assert_not_called()
 
     def test_on_stop(self, MockConsole):
         self.init(start=False, mock_on_stop=False)
@@ -199,6 +191,7 @@ class TestNgrok(unittest.TestCase):
                 "autostart": True,
                 "publicurl": "https://dummy-82-64-200-227.ngrok-free.app",
                 "tunnelstatus": "STOPPED",
+                "agenterror": None,
             },
         )
 
@@ -214,6 +207,7 @@ class TestNgrok(unittest.TestCase):
                 "autostart": True,
                 "publicurl": None,
                 "tunnelstatus": "STOPPED",
+                "agenterror": None,
             },
         )
 
@@ -472,7 +466,7 @@ class TestNgrok(unittest.TestCase):
         with self.assertRaises(CommandError) as cm:
             self.module.start_tunnel()
 
-        self.assertEqual(cm.exception.message, "Unable to start ngrok agent service")
+        self.assertEqual(cm.exception.message, "Unable to start ngrok agent")
         sleep_mock.assert_called()
 
     def test_start_tunnel_already_started(self, MockConsole):
@@ -497,7 +491,7 @@ class TestNgrok(unittest.TestCase):
         with self.assertRaises(CommandError) as cm:
             self.module.start_tunnel()
 
-        self.assertEqual(cm.exception.message, "Unable to start ngrok agent service")
+        self.assertEqual(cm.exception.message, "Unable to start ngrok agent")
 
     def test_stop_tunnel(self, MockConsole):
         self.init()
@@ -746,7 +740,7 @@ class TestNgrok(unittest.TestCase):
 
         result = self.module._Ngrok__start_agent()
 
-        self.assertFalse(result)
+        self.assertEqual(result, (False, "No authkey"))
 
     def test__start_agent_should_not_start_agent_if_already_running(self, MockConsole):
         self.init()
@@ -784,34 +778,34 @@ class TestNgrok(unittest.TestCase):
 
         self.assertFalse(result)
 
-    @patch("backend.ngrok.Timer")
-    def test__send_tunnel_event(self, MockTimer, MockConsole):
+    def test__send_tunnel_event(self, MockConsole):
         self.init()
+        self.module.task_factory.create_timer = Mock()
 
         self.module._Ngrok__send_tunnel_event()
 
         self.session.assert_event_called_with(
             "ngrok.tunnel.update", {"publicurl": None, "status": "STOPPED"}
         )
-        MockTimer.assert_not_called()
+        self.module.task_factory.create_timer.assert_not_called()
 
-    @patch("backend.ngrok.Timer")
-    def test__send_tunnel_event_delayed(self, MockTimer, MockConsole):
+    def test__send_tunnel_event_delayed(self, MockConsole):
         self.init()
+        self.module.task_factory.create_timer = Mock()
 
         self.module._Ngrok__send_tunnel_event(delayed=True)
 
         self.session.assert_event_not_called("ngrok.tunnel.update")
-        MockTimer.assert_called_with(2.0, session.AnyArg())
+        self.module.task_factory.create_timer.assert_called_with(2.0, session.AnyArg())
 
-    @patch("backend.ngrok.Timer")
-    def test__send_tunnel_event_disabled(self, MockTimer, MockConsole):
+    def test__send_tunnel_event_disabled(self, MockConsole):
         self.init()
+        self.module.task_factory.create_timer = Mock()
 
         self.module._Ngrok__send_tunnel_event(send_event=False)
 
         self.session.assert_event_not_called("ngrok.tunnel.update")
-        MockTimer.assert_not_called()
+        self.module.task_factory.create_timer.assert_not_called()
 
 
 class TestNgrokTunnelUpdateEvent(unittest.TestCase):
