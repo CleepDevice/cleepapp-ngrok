@@ -39,7 +39,7 @@ class Ngrok(CleepModule):
     AGENT_SERVICE = "/etc/systemd/system/ngrok.service"
     AGENT_CLI_BASE_URL = "http://localhost:4040/api"
     AGENT_CLI_HEADERS = {"content-type": "application/json"}
-    AGENT_LOG_REGEX = r'(\S+)=(\"[^=]*\"|\S+)(?:\s|$)'
+    AGENT_LOG_REGEX = r"(\S+)=(\"[^=]*\"|\S+)(?:\s|$)"
     CLEEP_TUNNEL_NAME = "cleep"
     TUNNEL_STARTUP_DELAY = 10.0
     TUNNEL_STARTUP_INTERVAL = 120.0
@@ -84,8 +84,7 @@ class Ngrok(CleepModule):
             if not self.__is_tunnel_established():
                 self.__tunnel_status = Ngrok.TUNNEL_STARTING
                 self.__start_tunnel_task = self.task_factory.create_task(
-                    self.TUNNEL_STARTUP_INTERVAL,
-                    self.__autoconnect_cleep_tunnel
+                    self.TUNNEL_STARTUP_INTERVAL, self.__autoconnect_cleep_tunnel
                 )
                 self.__start_tunnel_task.start()
             else:
@@ -166,16 +165,15 @@ class Ngrok(CleepModule):
         """
         Update ngrok binary using binary self update
         """
-        cmd = [
-            self.__agent_bin,
-            "update"
-        ]
+        cmd = [self.__agent_bin, "update"]
         self.__binary_update_std.clear()
         self.cleep_filesystem.enable_write()
-        console = EndlessConsole(cmd, self.__binary_update_callback, self.__binary_update_end_callback)
+        console = EndlessConsole(
+            cmd, self.__update_binary_callback, self.__update_binary_end_callback
+        )
         console.start()
 
-    def __binary_update_callback(self, stdout, stderr):
+    def __update_binary_callback(self, stdout, stderr):
         """
         Binary update callback
 
@@ -186,9 +184,9 @@ class Ngrok(CleepModule):
         if stdout:
             self.__binary_update_std.append(stdout)
         if stderr:
-            self.__binary_update_std.append('ERR: ' + stderr)
+            self.__binary_update_std.append("ERR: " + stderr)
 
-    def __binary_update_end_callback(self, return_code, killed):
+    def __update_binary_end_callback(self, return_code, killed):
         """
         Binary update end callback
 
@@ -196,9 +194,13 @@ class Ngrok(CleepModule):
             return_code (int): command return code
             killed (bool): killed status
         """
-        self.logger.info("Ngrok binary update return code=%s: %s", return_code, "\n".join(self.__binary_update_std))
+        self.logger.info(
+            "Ngrok binary update return code=%s: %s",
+            return_code,
+            "\n".join(self.__binary_update_std),
+        )
         self.cleep_filesystem.disable_write()
-        
+
     def get_tunnel_info(self):
         """
         Returns cleep tunnel info
@@ -286,12 +288,12 @@ class Ngrok(CleepModule):
             CommandInfo: if tunnel already exists
         """
         if not self.__start_agent():
-            raise CommandError('Unable to start ngrok agent')
+            raise CommandError("Unable to start ngrok agent")
         if not self.__is_agent_running():
             # maybe agent is just running and need some time to connect to ngrok services
             time.sleep(self.TUNNEL_STARTUP_DELAY)
             if not self.__is_agent_running():
-                raise CommandError('Unable to start ngrok agent')
+                raise CommandError("Unable to start ngrok agent")
         if self.__is_tunnel_established():
             raise CommandInfo("Tunnel already started")
 
@@ -314,11 +316,11 @@ class Ngrok(CleepModule):
         """
         connected = self.__is_tunnel_established()
         if connected and self.__start_tunnel_task:
-            self.logger.info('Stop startup tunnel task')
+            self.logger.info("Stop startup tunnel task")
             self.__start_tunnel_task.stop()
             self.__start_tunnel_task = None
 
-        self.logger.info('Trying to create Ngrok Cleep tunnel')
+        self.logger.info("Trying to create Ngrok Cleep tunnel")
         self.__add_cleep_tunnel()
 
     def __add_cleep_tunnel(self):
@@ -338,7 +340,6 @@ class Ngrok(CleepModule):
             self.__tunnel_status = Ngrok.TUNNEL_STARTED
             self.logger.info("Ngrok Cleep tunnel started")
             self.__send_tunnel_event(delayed=True)
-
 
             return True
 
@@ -394,12 +395,13 @@ class Ngrok(CleepModule):
             self.logger.debug("Authorize agent cmd: %s, resp: %s", cmd, resp)
             if resp["returncode"] != 0:
                 self.logger.error(
-                    "Unable to authorize ngrok agent: %s", '\n'.join(resp["stdout"] + resp["stderr"])
+                    "Unable to authorize ngrok agent: %s",
+                    "\n".join(resp["stdout"] + resp["stderr"]),
                 )
                 return False
 
         except Exception:
-            self.logger.exception('Unable to add auth token to ngrok')
+            self.logger.exception("Unable to add auth token to ngrok")
 
         finally:
             self.cleep_filesystem.disable_write()
@@ -417,10 +419,10 @@ class Ngrok(CleepModule):
         console = Console()
 
         service = os.path.basename(self.AGENT_SERVICE)
-        cmd = ['systemctl', 'is-active', '--quiet', service]
-        self.logger.debug('Is agent running cmd: %s', cmd)
+        cmd = ["systemctl", "is-active", "--quiet", service]
+        self.logger.debug("Is agent running cmd: %s", cmd)
         resp = console.command(cmd)
-        self.logger.debug('Is agent running resp: %s', resp)
+        self.logger.debug("Is agent running resp: %s", resp)
 
         if resp["returncode"] != 0:
             # ngrok service is inactive (reset error too)
@@ -458,7 +460,22 @@ class Ngrok(CleepModule):
 
             None: if no error found
         """
-        cmd = ["journalctl", "-u", "ngrok", "-p", "3", "-n", "1", "--no-pager", "--since", "1 minutes ago", "-r", "--quiet", "-o", "cat"]
+        cmd = [
+            "journalctl",
+            "-u",
+            "ngrok",
+            "-p",
+            "3",
+            "-n",
+            "1",
+            "--no-pager",
+            "--since",
+            "1 minutes ago",
+            "-r",
+            "--quiet",
+            "-o",
+            "cat",
+        ]
         self.logger.trace("Is agent connected cmd: %s", cmd)
         resp = console.command(cmd)
         self.logger.debug("Is agent connected resp: %s", resp)
@@ -468,12 +485,16 @@ class Ngrok(CleepModule):
             # no error
             return None
 
-        parsed_line = [item.replace("\"","") for item in re.split(self.AGENT_LOG_REGEX, stdout[0]) if len(item.strip())>0]
+        parsed_line = [
+            item.replace('"', "")
+            for item in re.split(self.AGENT_LOG_REGEX, stdout[0])
+            if len(item.strip()) > 0
+        ]
         if len(parsed_line) == 0:
             return None
 
         line_iter = iter(parsed_line)
-        return { k:v for k,v in zip(line_iter, line_iter) }
+        return {k: v for k, v in zip(line_iter, line_iter)}
 
     def __install_agent(self):
         """
@@ -484,7 +505,7 @@ class Ngrok(CleepModule):
         """
         # check service not already installed
         if os.path.exists(self.AGENT_SERVICE):
-            self.logger.info('Ngrok agent already installed')
+            self.logger.info("Ngrok agent already installed")
             return True
 
         # ngrok service install --config <config>
@@ -510,7 +531,8 @@ class Ngrok(CleepModule):
 
             if resp["returncode"] != 0:
                 self.logger.error(
-                    "Unable to install ngrok agent: %s", '\n'.join(resp["stdout"] + resp["stderr"])
+                    "Unable to install ngrok agent: %s",
+                    "\n".join(resp["stdout"] + resp["stderr"]),
                 )
                 return False
         except Exception:
@@ -536,12 +558,12 @@ class Ngrok(CleepModule):
         auth_key = self._get_config_field("authkey")
         if not auth_key:
             # can't start agent without auth key
-            self.logger.warning('Can\'t start ngrok agent without auth key')
+            self.logger.warning("Can't start ngrok agent without auth key")
             return (False, "No authkey")
 
         if self.__is_agent_running():
             # agent already running, no need to start it again
-            self.logger.info('Ngrok agent already running')
+            self.logger.info("Ngrok agent already running")
             return (True, None)
 
         if self.__last_agent_error:
@@ -562,7 +584,8 @@ class Ngrok(CleepModule):
 
         if resp["returncode"] != 0:
             self.logger.error(
-                "Unable to start ngrok agent: %s", '\n'.join(resp["stdout"] + resp["stderr"])
+                "Unable to start ngrok agent: %s",
+                "\n".join(resp["stdout"] + resp["stderr"]),
             )
             return False
 
@@ -593,7 +616,8 @@ class Ngrok(CleepModule):
 
         if resp["returncode"] != 0:
             self.logger.error(
-                "Unable to stop ngrok agent: %s", '\n'.join(resp["stdout"] + resp["stderr"])
+                "Unable to stop ngrok agent: %s",
+                "\n".join(resp["stdout"] + resp["stderr"]),
             )
             return False
 
@@ -613,7 +637,7 @@ class Ngrok(CleepModule):
 
         def timer_send_event():
             tunnel_info = self.__get_tunnel_info() or {}
-            self.logger.debug('Send event, tunnel info: %s', tunnel_info)
+            self.logger.debug("Send event, tunnel info: %s", tunnel_info)
             params = {
                 "status": self.__tunnel_status,
                 "publicurl": tunnel_info.get("publicurl"),

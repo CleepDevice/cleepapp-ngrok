@@ -18,6 +18,7 @@ from cleep.exception import (
 )
 from cleep.libs.tests.common import get_log_level
 from unittest.mock import Mock, patch
+from cleep.libs.tests.common import AnyArg, TypeArg
 import responses
 
 LOG_LEVEL = get_log_level()
@@ -87,7 +88,7 @@ class TestNgrok(unittest.TestCase):
         if start:
             self.session.start_module(self.module)
 
-    def test_on_start_should_start_tunnel(self, MockConsole):
+    def test_on_start_should_start_tunnel(self, console_mock):
         self.init(start=False, mock_on_start=False)
         self.module._Ngrok__install_agent = Mock(return_value=True)
         self.module._Ngrok__start_agent = Mock(return_value=True)
@@ -97,9 +98,13 @@ class TestNgrok(unittest.TestCase):
 
         self.module._on_start()
 
-        self.session.task_factory.create_task.assert_called_with(120.0, session.AnyArg())
+        self.session.task_factory.create_task.assert_called_with(
+            120.0, session.AnyArg()
+        )
 
-    def test_on_start_should_not_start_tunnel_if_agent_not_installed(self, MockConsole):
+    def test_on_start_should_not_start_tunnel_if_agent_not_installed(
+        self, console_mock
+    ):
         self.init(start=False, mock_on_start=False)
         self.module._Ngrok__install_agent = Mock(return_value=False)
         self.session.task_factory.create_task = Mock()
@@ -108,7 +113,9 @@ class TestNgrok(unittest.TestCase):
 
         self.session.task_factory.create_task.assert_not_called()
 
-    def test_on_start_should_not_start_tunnel_if_agent_is_not_started(self, MockConsole):
+    def test_on_start_should_not_start_tunnel_if_agent_is_not_started(
+        self, console_mock
+    ):
         self.init(start=False, mock_on_start=False)
         self.module._Ngrok__install_agent = Mock(return_value=True)
         self.module._Ngrok__start_agent = Mock(return_value=False)
@@ -118,7 +125,7 @@ class TestNgrok(unittest.TestCase):
 
         self.session.task_factory.create_task.assert_not_called()
 
-    def test_on_start_should_not_start_tunnel_if_autostart_is_false(self, MockConsole):
+    def test_on_start_should_not_start_tunnel_if_autostart_is_false(self, console_mock):
         self.init(start=False, mock_on_start=False)
         self.module._Ngrok__install_agent = Mock(return_value=True)
         self.module._Ngrok__start_agent = Mock(return_value=True)
@@ -129,7 +136,9 @@ class TestNgrok(unittest.TestCase):
 
         self.session.task_factory.create_task.assert_not_called()
 
-    def test_on_start_should_not_start_tunnel_if_agent_fails_to_start(self, MockConsole):
+    def test_on_start_should_not_start_tunnel_if_agent_fails_to_start(
+        self, console_mock
+    ):
         self.init(start=False, mock_on_start=False)
         self.module._get_config_field = Mock(side_effect=["auth-key", True])
         self.module._Ngrok__is_agent_running = Mock(return_value=False)
@@ -141,7 +150,9 @@ class TestNgrok(unittest.TestCase):
 
         self.session.task_factory.create_task.assert_not_called()
 
-    def test_on_start_should_not_start_tunnel_if_tunnel_already_started(self, MockConsole):
+    def test_on_start_should_not_start_tunnel_if_tunnel_already_started(
+        self, console_mock
+    ):
         self.init(start=False, mock_on_start=False)
         self.module._get_config_field = Mock(side_effect=["auth-key", True])
         self.module._Ngrok__install_agent = Mock(return_value=True)
@@ -153,7 +164,7 @@ class TestNgrok(unittest.TestCase):
 
         self.session.task_factory.create_task.assert_not_called()
 
-    def test_on_stop(self, MockConsole):
+    def test_on_stop(self, console_mock):
         self.init(start=False, mock_on_stop=False)
         self.module._Ngrok__remove_cleep_tunnel = Mock()
 
@@ -162,7 +173,7 @@ class TestNgrok(unittest.TestCase):
         self.module._Ngrok__remove_cleep_tunnel.assert_called()
 
     def test_on_stop_shoud_not_fail_if_remove_cleep_tunnel_call_failed(
-        self, MockConsole
+        self, console_mock
     ):
         self.init(start=False, mock_on_stop=False)
         self.module._Ngrok__remove_cleep_tunnel = Mock(
@@ -174,7 +185,7 @@ class TestNgrok(unittest.TestCase):
         except:
             self.fail("Should not trigger exception")
 
-    def test_get_module_with_tunnel_info(self, MockConsole):
+    def test_get_module_with_tunnel_info(self, console_mock):
         self.init()
         self.resp_mock.replace(
             responses.GET, self.tunnel_get_url, json=self.TUNNEL_INFO
@@ -195,7 +206,7 @@ class TestNgrok(unittest.TestCase):
             },
         )
 
-    def test_get_module_without_tunnel_info(self, MockConsole):
+    def test_get_module_without_tunnel_info(self, console_mock):
         self.init()
 
         config = self.module.get_module_config()
@@ -211,7 +222,7 @@ class TestNgrok(unittest.TestCase):
             },
         )
 
-    def test_set_auto_start_ok(self, MockConsole):
+    def test_set_auto_start_ok(self, console_mock):
         self.init()
         self.module._set_config_field = Mock(return_value=True)
 
@@ -219,7 +230,7 @@ class TestNgrok(unittest.TestCase):
 
         self.module._set_config_field.assert_called_with("autostart", True)
 
-    def test_set_auto_start_error_saving_config(self, MockConsole):
+    def test_set_auto_start_error_saving_config(self, console_mock):
         self.init()
         self.module._set_config_field = Mock(return_value=False)
 
@@ -229,7 +240,7 @@ class TestNgrok(unittest.TestCase):
         self.assertEqual(cm.exception.message, "Unable to save config")
         self.module._set_config_field.assert_called_with("autostart", False)
 
-    def test_set_auto_start_check_params(self, MockConsole):
+    def test_set_auto_start_check_params(self, console_mock):
         self.init()
 
         with self.assertRaises(InvalidParameter) as cm:
@@ -239,7 +250,7 @@ class TestNgrok(unittest.TestCase):
             cm.exception.message, 'Parameter "auto_start" must be of type "bool"'
         )
 
-    def test_set_auth_key(self, MockConsole):
+    def test_set_auth_key(self, console_mock):
         self.init()
         self.module._set_config_field = Mock(return_value=True)
         self.module._Ngrok__authorize_agent = Mock(return_value=True)
@@ -248,7 +259,7 @@ class TestNgrok(unittest.TestCase):
 
         self.module._set_config_field.assert_called_with("authkey", "a-key")
 
-    def test_set_auth_key_auth_failed(self, MockConsole):
+    def test_set_auth_key_auth_failed(self, console_mock):
         self.init()
         self.module._set_config_field = Mock(return_value=True)
         self.module._Ngrok__authorize_agent = Mock(return_value=False)
@@ -259,7 +270,7 @@ class TestNgrok(unittest.TestCase):
         self.assertEqual(cm.exception.message, "Can't authorize with specified key")
         self.module._set_config_field.assert_not_called()
 
-    def test_set_auth_key_config_saving_fails(self, MockConsole):
+    def test_set_auth_key_config_saving_fails(self, console_mock):
         self.init()
         self.module._set_config_field = Mock(return_value=False)
         self.module._Ngrok__authorize_agent = Mock(return_value=True)
@@ -270,7 +281,34 @@ class TestNgrok(unittest.TestCase):
         self.assertEqual(cm.exception.message, "Unable to save config")
         self.module._set_config_field.assert_called_with("authkey", "a-key")
 
-    def test_get_tunnel_info(self, MockConsole):
+    @patch("backend.ngrok.EndlessConsole")
+    def test_update_binary(self, endless_console_mock, console_mock):
+        self.init()
+
+        self.module.update_binary()
+
+        endless_console_mock.assert_called_with(
+            ["/var/opt/cleep/modules/bin/ngrok/ngrok", "update"], AnyArg(), AnyArg()
+        )
+        self.session.cleep_filesystem.enable_write.assert_called()
+
+    def test___update_binary_callback(self, console_mock):
+        self.init()
+
+        self.module._Ngrok__update_binary_callback("stdout", "stderr")
+
+        self.assertListEqual(
+            self.module._Ngrok__binary_update_std, ["stdout", "ERR: stderr"]
+        )
+
+    def test___update_binary_end_callback(self, console_mock):
+        self.init()
+
+        self.module._Ngrok__update_binary_end_callback(0, False)
+
+        self.session.cleep_filesystem.disable_write.assert_called()
+
+    def test_get_tunnel_info(self, console_mock):
         self.init()
         self.resp_mock.replace(
             responses.GET, self.tunnel_get_url, json=self.TUNNEL_INFO
@@ -313,7 +351,7 @@ class TestNgrok(unittest.TestCase):
             },
         )
 
-    def test_get_tunnel_info_without_info(self, MockConsole):
+    def test_get_tunnel_info_without_info(self, console_mock):
         self.init()
 
         with self.assertRaises(CommandError) as cm:
@@ -321,7 +359,7 @@ class TestNgrok(unittest.TestCase):
 
         self.assertEqual(cm.exception.message, "Unable to get tunnel info")
 
-    def test__get_tunnel_info(self, MockConsole):
+    def test__get_tunnel_info(self, console_mock):
         self.init()
         self.resp_mock.replace(
             responses.GET, self.tunnel_get_url, json=self.TUNNEL_INFO
@@ -330,7 +368,7 @@ class TestNgrok(unittest.TestCase):
         self.module._Ngrok__is_tunnel_established = Mock(return_value=True)
 
         info = self.module._Ngrok__get_tunnel_info()
-        logging.debug('info: %s', info)
+        logging.debug("info: %s", info)
 
         self.assertDictEqual(
             info,
@@ -364,7 +402,7 @@ class TestNgrok(unittest.TestCase):
             },
         )
 
-    def test__get_tunnel_info_handle_status_not_200(self, MockConsole):
+    def test__get_tunnel_info_handle_status_not_200(self, console_mock):
         self.init()
         self.module._get_config_field = Mock(side_effect=["auth-key"])
         self.module._Ngrok__is_tunnel_established = Mock(return_value=True)
@@ -376,7 +414,7 @@ class TestNgrok(unittest.TestCase):
 
         self.assertIsNone(info)
 
-    def test__get_tunnel_info_handle_error(self, MockConsole):
+    def test__get_tunnel_info_handle_error(self, console_mock):
         self.init()
         self.module._get_config_field = Mock(side_effect=["auth-key"])
         self.module._Ngrok__is_tunnel_established = Mock(return_value=True)
@@ -388,7 +426,7 @@ class TestNgrok(unittest.TestCase):
 
         self.assertIsNone(info)
 
-    def test__get_tunnel_info_on_tunnel_not_established(self, MockConsole):
+    def test__get_tunnel_info_on_tunnel_not_established(self, console_mock):
         self.init()
         self.module._get_config_field = Mock(side_effect=["auth-key"])
         self.module._Ngrok__is_tunnel_established = Mock(return_value=False)
@@ -397,31 +435,27 @@ class TestNgrok(unittest.TestCase):
 
         self.assertIsNone(info)
 
-    def test__is_tunnel_established(self, MockConsole):
+    def test__is_tunnel_established(self, console_mock):
         self.init()
-        logging.debug('HEAD url: %s', self.tunnel_head_url)
-        self.resp_mock.replace(
-            responses.HEAD, self.tunnel_head_url, status=200
-        )
+        logging.debug("HEAD url: %s", self.tunnel_head_url)
+        self.resp_mock.replace(responses.HEAD, self.tunnel_head_url, status=200)
 
         result = self.module._Ngrok__is_tunnel_established()
 
         self.assertTrue(result)
 
-    def test__is_tunnel_established_not_established(self, MockConsole):
+    def test__is_tunnel_established_not_established(self, console_mock):
         self.init()
-        logging.debug('HEAD url: %s', self.tunnel_head_url)
-        self.resp_mock.replace(
-            responses.HEAD, self.tunnel_head_url, status=400
-        )
+        logging.debug("HEAD url: %s", self.tunnel_head_url)
+        self.resp_mock.replace(responses.HEAD, self.tunnel_head_url, status=400)
 
         result = self.module._Ngrok__is_tunnel_established()
 
         self.assertFalse(result)
 
-    def test__is_tunnel_established_request_failure(self, MockConsole):
+    def test__is_tunnel_established_request_failure(self, console_mock):
         self.init()
-        logging.debug('HEAD url: %s', self.tunnel_head_url)
+        logging.debug("HEAD url: %s", self.tunnel_head_url)
         self.resp_mock.replace(
             responses.HEAD, self.tunnel_head_url, body=Exception("Network error")
         )
@@ -430,7 +464,7 @@ class TestNgrok(unittest.TestCase):
 
         self.assertFalse(result)
 
-    def test_start_tunnel(self, MockConsole):
+    def test_start_tunnel(self, console_mock):
         self.init()
         self.resp_mock.replace(responses.GET, self.tunnel_get_url, json=None)
         self.module._Ngrok__start_agent = Mock(return_value=True)
@@ -442,8 +476,8 @@ class TestNgrok(unittest.TestCase):
 
         self.assertIsNone(result)
 
-    @patch('backend.ngrok.time.sleep')
-    def test_start_tunnel_should_wait_agent_running(self, sleep_mock, MockConsole):
+    @patch("backend.ngrok.time.sleep")
+    def test_start_tunnel_should_wait_agent_running(self, sleep_mock, console_mock):
         self.init()
         self.resp_mock.replace(responses.GET, self.tunnel_get_url, json=None)
         self.module._Ngrok__start_agent = Mock(return_value=True)
@@ -456,8 +490,10 @@ class TestNgrok(unittest.TestCase):
         self.assertIsNone(result)
         sleep_mock.assert_called()
 
-    @patch('backend.ngrok.time.sleep')
-    def test_start_tunnel_should_failed_if_agent_not_running_after_pause(self, sleep_mock, MockConsole):
+    @patch("backend.ngrok.time.sleep")
+    def test_start_tunnel_should_failed_if_agent_not_running_after_pause(
+        self, sleep_mock, console_mock
+    ):
         self.init()
         self.resp_mock.replace(responses.GET, self.tunnel_get_url, json=None)
         self.module._Ngrok__start_agent = Mock(return_value=True)
@@ -469,7 +505,7 @@ class TestNgrok(unittest.TestCase):
         self.assertEqual(cm.exception.message, "Unable to start ngrok agent")
         sleep_mock.assert_called()
 
-    def test_start_tunnel_already_started(self, MockConsole):
+    def test_start_tunnel_already_started(self, console_mock):
         self.init()
         self.resp_mock.replace(
             responses.GET, self.tunnel_get_url, json=self.TUNNEL_INFO
@@ -483,7 +519,7 @@ class TestNgrok(unittest.TestCase):
 
         self.assertEqual(cm.exception.message, "Tunnel already started")
 
-    def test_start_tunnel_error(self, MockConsole):
+    def test_start_tunnel_error(self, console_mock):
         self.init()
         self.resp_mock.replace(responses.GET, self.tunnel_get_url, json=None)
         self.module._Ngrok__add_cleep_tunnel = Mock(return_value=False)
@@ -493,7 +529,7 @@ class TestNgrok(unittest.TestCase):
 
         self.assertEqual(cm.exception.message, "Unable to start ngrok agent")
 
-    def test_stop_tunnel(self, MockConsole):
+    def test_stop_tunnel(self, console_mock):
         self.init()
         self.module._Ngrok__remove_cleep_tunnel = Mock(return_value=True)
 
@@ -501,7 +537,7 @@ class TestNgrok(unittest.TestCase):
 
         self.assertIsNone(result)
 
-    def test_stop_tunnel_error(self, MockConsole):
+    def test_stop_tunnel_error(self, console_mock):
         self.init()
         self.module._Ngrok__remove_cleep_tunnel = Mock(return_value=False)
 
@@ -510,7 +546,7 @@ class TestNgrok(unittest.TestCase):
 
         self.assertEqual(cm.exception.message, "Error stoping tunnel")
 
-    def test__add_cleep_tunnel(self, MockConsole):
+    def test__add_cleep_tunnel(self, console_mock):
         self.init()
         matches = [
             responses.matchers.json_params_matcher(
@@ -542,7 +578,7 @@ class TestNgrok(unittest.TestCase):
             },
         )
 
-    def test__add_cleep_tunnel_request_failed(self, MockConsole):
+    def test__add_cleep_tunnel_request_failed(self, console_mock):
         self.init()
         self.resp_mock.replace(
             responses.POST, self.tunnel_post_url, json={}, status=400
@@ -562,11 +598,9 @@ class TestNgrok(unittest.TestCase):
             },
         )
 
-    def test__remove_cleep_tunnel(self, MockConsole):
+    def test__remove_cleep_tunnel(self, console_mock):
         self.init()
-        self.resp_mock.replace(
-            responses.DELETE, self.tunnel_delete_url, status=204
-        )
+        self.resp_mock.replace(responses.DELETE, self.tunnel_delete_url, status=204)
         self.resp_mock.replace(
             responses.GET, self.tunnel_get_url, json=self.TUNNEL_INFO
         )
@@ -582,7 +616,7 @@ class TestNgrok(unittest.TestCase):
             },
         )
 
-    def test__remove_cleep_tunnel_request_failed(self, MockConsole):
+    def test__remove_cleep_tunnel_request_failed(self, console_mock):
         self.init()
         self.resp_mock.replace(
             responses.POST, self.tunnel_post_url, json={}, status=400
@@ -604,45 +638,58 @@ class TestNgrok(unittest.TestCase):
             },
         )
 
-    def test__authorize_agent(self, MockConsole):
+    def test__authorize_agent(self, console_mock):
         self.init()
         command_mock = Mock(return_value={"returncode": 0})
-        MockConsole.return_value.command = command_mock
+        console_mock.return_value.command = command_mock
 
         result = self.module._Ngrok__authorize_agent("auth-key")
 
         self.assertTrue(result)
         command_mock.assert_called_with(
-            ["/var/opt/cleep/modules/bin/ngrok/ngrok", "config", "add-authtoken", "auth-key", "--config", "/var/opt/cleep/modules/bin/ngrok/ngrok.yml"],
+            [
+                "/var/opt/cleep/modules/bin/ngrok/ngrok",
+                "config",
+                "add-authtoken",
+                "auth-key",
+                "--config",
+                "/var/opt/cleep/modules/bin/ngrok/ngrok.yml",
+            ],
             timeout=5,
             opts=session.AnyArg(),
         )
 
-    def test__authorize_agent_failed(self, MockConsole):
+    def test__authorize_agent_failed(self, console_mock):
         self.init()
         command_mock = Mock(
             return_value={"returncode": 1, "stdout": ["stdout"], "stderr": ["stderr"]}
         )
-        MockConsole.return_value.command = command_mock
+        console_mock.return_value.command = command_mock
 
         result = self.module._Ngrok__authorize_agent("auth-key")
 
         self.assertFalse(result)
 
-    @patch('backend.ngrok.os.path.exists')
-    def test__install_agent(self, MockOsPathExists, MockConsole):
+    @patch("backend.ngrok.os.path.exists")
+    def test__install_agent(self, MockOsPathExists, console_mock):
         self.init()
         MockOsPathExists.side_effect = [False, True]
         command_mock = Mock(
             return_value={"returncode": 0, "stdout": ["stdout"], "stderr": ["stderr"]}
         )
-        MockConsole.return_value.command = command_mock
+        console_mock.return_value.command = command_mock
 
         result = self.module._Ngrok__install_agent()
 
         self.assertTrue(result)
         command_mock.assert_called_with(
-            ["/var/opt/cleep/modules/bin/ngrok/ngrok", "service", "install", "--config", "/var/opt/cleep/modules/bin/ngrok/ngrok.yml"],
+            [
+                "/var/opt/cleep/modules/bin/ngrok/ngrok",
+                "service",
+                "install",
+                "--config",
+                "/var/opt/cleep/modules/bin/ngrok/ngrok.yml",
+            ],
             timeout=10,
             opts=session.AnyArg(),
         )
@@ -650,12 +697,14 @@ class TestNgrok(unittest.TestCase):
         self.session.cleep_filesystem.enable_write.assert_called()
         self.session.cleep_filesystem.disable_write.assert_called()
 
-    @patch('backend.ngrok.os.path.exists')
-    def test__install_agent_service_already_installed(self, MockOsPathExists, MockConsole):
+    @patch("backend.ngrok.os.path.exists")
+    def test__install_agent_service_already_installed(
+        self, MockOsPathExists, console_mock
+    ):
         self.init()
         MockOsPathExists.return_value = True
         command_mock = Mock()
-        MockConsole.return_value.command = command_mock
+        console_mock.return_value.command = command_mock
 
         result = self.module._Ngrok__install_agent()
 
@@ -664,14 +713,16 @@ class TestNgrok(unittest.TestCase):
         self.session.cleep_filesystem.enable_write.assert_not_called()
         self.session.cleep_filesystem.disable_write.assert_not_called()
 
-    @patch('backend.ngrok.os.path.exists')
-    def test__install_agent_service_command_failed(self, MockOsPathExists, MockConsole):
+    @patch("backend.ngrok.os.path.exists")
+    def test__install_agent_service_command_failed(
+        self, MockOsPathExists, console_mock
+    ):
         self.init()
         MockOsPathExists.side_effect = [False, True]
         command_mock = Mock(
             return_value={"returncode": 1, "stdout": ["stdout"], "stderr": ["stderr"]}
         )
-        MockConsole.return_value.command = command_mock
+        console_mock.return_value.command = command_mock
 
         result = self.module._Ngrok__install_agent()
 
@@ -679,48 +730,52 @@ class TestNgrok(unittest.TestCase):
         self.session.cleep_filesystem.enable_write.assert_called()
         self.session.cleep_filesystem.disable_write.assert_called()
 
-    @patch('backend.ngrok.os.path.exists')
-    def test__install_agent_create_default_config_file(self, MockOsPathExists, MockConsole):
+    @patch("backend.ngrok.os.path.exists")
+    def test__install_agent_create_default_config_file(
+        self, MockOsPathExists, console_mock
+    ):
         self.init()
         MockOsPathExists.side_effect = [False, False]
         command_mock = Mock(
             return_value={"returncode": 0, "stdout": ["stdout"], "stderr": ["stderr"]}
         )
-        MockConsole.return_value.command = command_mock
+        console_mock.return_value.command = command_mock
 
         result = self.module._Ngrok__install_agent()
 
         self.assertTrue(result)
-        self.session.cleep_filesystem.write_data.assert_called_with('/var/opt/cleep/modules/bin/ngrok/ngrok.yml', session.AnyArg())
+        self.session.cleep_filesystem.write_data.assert_called_with(
+            "/var/opt/cleep/modules/bin/ngrok/ngrok.yml", session.AnyArg()
+        )
         self.session.cleep_filesystem.enable_write.assert_called()
         self.session.cleep_filesystem.disable_write.assert_called()
 
-    def test__is_agent_running_ngrock_running(self, MockConsole):
+    def test__is_agent_running_ngrock_running(self, console_mock):
         self.init()
         command_mock = Mock(
             return_value={"returncode": 0, "stdout": ["stdout"], "stderr": ["stderr"]}
         )
-        MockConsole.return_value.command = command_mock
+        console_mock.return_value.command = command_mock
 
         result = self.module._Ngrok__is_agent_running()
 
         self.assertTrue(result)
 
-    def test__is_agent_running_ngrock_not_running(self, MockConsole):
+    def test__is_agent_running_ngrock_not_running(self, console_mock):
         self.init()
         command_mock = Mock(
             return_value={"returncode": 1, "stdout": ["stdout"], "stderr": ["stderr"]}
         )
-        MockConsole.return_value.command = command_mock
+        console_mock.return_value.command = command_mock
 
         result = self.module._Ngrok__is_agent_running()
 
         self.assertFalse(result)
 
-    def test__start_agent(self, MockConsole):
+    def test__start_agent(self, console_mock):
         self.init()
         command_mock = Mock(return_value={"returncode": 0})
-        MockConsole.return_value.command = command_mock
+        console_mock.return_value.command = command_mock
         self.module._get_config_field = Mock(side_effect=["auth-key"])
         self.module._Ngrok__is_agent_running = Mock(return_value=False)
 
@@ -728,24 +783,32 @@ class TestNgrok(unittest.TestCase):
 
         self.assertTrue(result)
         command_mock.assert_called_with(
-            ["/var/opt/cleep/modules/bin/ngrok/ngrok", "service", "start", "--config", "/var/opt/cleep/modules/bin/ngrok/ngrok.yml"], timeout=10, opts=session.AnyArg()
+            [
+                "/var/opt/cleep/modules/bin/ngrok/ngrok",
+                "service",
+                "start",
+                "--config",
+                "/var/opt/cleep/modules/bin/ngrok/ngrok.yml",
+            ],
+            timeout=10,
+            opts=session.AnyArg(),
         )
 
-    def test__start_agent_command_failed(self, MockConsole):
+    def test__start_agent_command_failed(self, console_mock):
         self.init()
         command_mock = Mock(
             return_value={"returncode": 1, "stdout": ["stdout"], "stderr": ["stderr"]}
         )
-        MockConsole.return_value.command = command_mock
+        console_mock.return_value.command = command_mock
 
         result = self.module._Ngrok__start_agent()
 
         self.assertEqual(result, (False, "No authkey"))
 
-    def test__start_agent_should_not_start_agent_if_already_running(self, MockConsole):
+    def test__start_agent_should_not_start_agent_if_already_running(self, console_mock):
         self.init()
         command_mock = Mock(return_value={"returncode": 0})
-        MockConsole.return_value.command = command_mock
+        console_mock.return_value.command = command_mock
         self.module._get_config_field = Mock(side_effect=["auth-key"])
         self.module._Ngrok__is_agent_running = Mock(return_value=True)
 
@@ -754,31 +817,39 @@ class TestNgrok(unittest.TestCase):
         self.assertTrue(result)
         command_mock.assert_not_called()
 
-    def test__stop_agent(self, MockConsole):
+    def test__stop_agent(self, console_mock):
         self.init()
         command_mock = Mock(return_value={"returncode": 0})
-        MockConsole.return_value.command = command_mock
+        console_mock.return_value.command = command_mock
 
         result = self.module._Ngrok__stop_agent()
 
         self.assertTrue(result)
         command_mock.assert_called_with(
-            ["/var/opt/cleep/modules/bin/ngrok/ngrok", "service", "stop", "--config", "/var/opt/cleep/modules/bin/ngrok/ngrok.yml"], timeout=10, opts=session.AnyArg()
+            [
+                "/var/opt/cleep/modules/bin/ngrok/ngrok",
+                "service",
+                "stop",
+                "--config",
+                "/var/opt/cleep/modules/bin/ngrok/ngrok.yml",
+            ],
+            timeout=10,
+            opts=session.AnyArg(),
         )
 
-    def test__stop_agent_failed(self, MockConsole):
+    def test__stop_agent_failed(self, console_mock):
         self.init()
         command_mock = Mock(
             return_value={"returncode": 1, "stdout": ["stdout"], "stderr": ["stderr"]}
         )
-        MockConsole.return_value.command = command_mock
+        console_mock.return_value.command = command_mock
         self.module._Ngrok__is_agent_running = Mock(return_value=True)
 
         result = self.module._Ngrok__stop_agent()
 
         self.assertFalse(result)
 
-    def test__send_tunnel_event(self, MockConsole):
+    def test__send_tunnel_event(self, console_mock):
         self.init()
         self.module.task_factory.create_timer = Mock()
 
@@ -789,7 +860,7 @@ class TestNgrok(unittest.TestCase):
         )
         self.module.task_factory.create_timer.assert_not_called()
 
-    def test__send_tunnel_event_delayed(self, MockConsole):
+    def test__send_tunnel_event_delayed(self, console_mock):
         self.init()
         self.module.task_factory.create_timer = Mock()
 
@@ -798,7 +869,7 @@ class TestNgrok(unittest.TestCase):
         self.session.assert_event_not_called("ngrok.tunnel.update")
         self.module.task_factory.create_timer.assert_called_with(2.0, session.AnyArg())
 
-    def test__send_tunnel_event_disabled(self, MockConsole):
+    def test__send_tunnel_event_disabled(self, console_mock):
         self.init()
         self.module.task_factory.create_timer = Mock()
 
