@@ -18,10 +18,15 @@ from cleep.exception import (
 )
 from cleep.libs.tests.common import get_log_level
 from unittest.mock import Mock, patch
-from cleep.libs.tests.common import AnyArg, TypeArg
 import responses
 
 LOG_LEVEL = get_log_level()
+
+
+# TODO remove when Cleep v1.0.0 will be available
+class AnyArg:
+    def __eq__(self, a):
+        return True
 
 
 @patch("backend.ngrok.Console")
@@ -98,9 +103,7 @@ class TestNgrok(unittest.TestCase):
 
         self.module._on_start()
 
-        self.session.task_factory.create_task.assert_called_with(
-            120.0, session.AnyArg()
-        )
+        self.session.task_factory.create_task.assert_called_with(120.0, AnyArg())
 
     def test_on_start_should_not_start_tunnel_if_agent_not_installed(
         self, console_mock
@@ -656,7 +659,7 @@ class TestNgrok(unittest.TestCase):
                 "/var/opt/cleep/modules/bin/ngrok/ngrok.yml",
             ],
             timeout=5,
-            opts=session.AnyArg(),
+            opts=AnyArg(),
         )
 
     def test__authorize_agent_failed(self, console_mock):
@@ -691,7 +694,7 @@ class TestNgrok(unittest.TestCase):
                 "/var/opt/cleep/modules/bin/ngrok/ngrok.yml",
             ],
             timeout=10,
-            opts=session.AnyArg(),
+            opts=AnyArg(),
         )
         self.session.cleep_filesystem.write_data.assert_not_called()
         self.session.cleep_filesystem.enable_write.assert_called()
@@ -745,7 +748,7 @@ class TestNgrok(unittest.TestCase):
 
         self.assertTrue(result)
         self.session.cleep_filesystem.write_data.assert_called_with(
-            "/var/opt/cleep/modules/bin/ngrok/ngrok.yml", session.AnyArg()
+            "/var/opt/cleep/modules/bin/ngrok/ngrok.yml", AnyArg()
         )
         self.session.cleep_filesystem.enable_write.assert_called()
         self.session.cleep_filesystem.disable_write.assert_called()
@@ -791,7 +794,7 @@ class TestNgrok(unittest.TestCase):
                 "/var/opt/cleep/modules/bin/ngrok/ngrok.yml",
             ],
             timeout=10,
-            opts=session.AnyArg(),
+            opts=AnyArg(),
         )
 
     def test__start_agent_command_failed(self, console_mock):
@@ -834,7 +837,7 @@ class TestNgrok(unittest.TestCase):
                 "/var/opt/cleep/modules/bin/ngrok/ngrok.yml",
             ],
             timeout=10,
-            opts=session.AnyArg(),
+            opts=AnyArg(),
         )
 
     def test__stop_agent_failed(self, console_mock):
@@ -867,7 +870,7 @@ class TestNgrok(unittest.TestCase):
         self.module._Ngrok__send_tunnel_event(delayed=True)
 
         self.session.assert_event_not_called("ngrok.tunnel.update")
-        self.module.task_factory.create_timer.assert_called_with(2.0, session.AnyArg())
+        self.module.task_factory.create_timer.assert_called_with(2.0, AnyArg())
 
     def test__send_tunnel_event_disabled(self, console_mock):
         self.init()
