@@ -15,3 +15,8 @@ chmod +x ngrok
 mkdir -p /var/opt/cleep/modules/bin/ngrok/
 cp -f ngrok /var/opt/cleep/modules/bin/ngrok/
 
+# The running process keeps the previous binary until the service restarts.
+if systemctl is-active --quiet ngrok.service 2>/dev/null; then
+    systemctl restart ngrok.service || echo "ngrok service restart failed"
+fi
+

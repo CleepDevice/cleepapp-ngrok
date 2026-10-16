@@ -1,17 +1,18 @@
 /**
  * Ngrok config component
  * Handle ngrok application configuration
- * If your application doesn't need configuration page, delete this file and its references into desc.json
  */
 angular
 .module('Cleep')
-.directive('ngrokConfigComponent', ['$rootScope', 'cleepService', 'toastService', 'ngrokService',
-function($rootScope, cleepService, toastService, ngrokService) {
+.directive('ngrokConfigComponent', ['cleepService', 'toastService', 'ngrokService', '$location',
+function(cleepService, toastService, ngrokService, $location) {
 
-    var ngrokConfigController = function($scope) {
-        var self = this;
+    const ngrokConfigController = function($scope) {
+        const self = this;
         self.config = {};
         self.serviceButtons = [];
+        self.authButtons = [];
+        self.authSubtitle = '';
         self.publicUrl = '';
         self.agentStatus = '';
         self.metrics = {
@@ -20,18 +21,27 @@ function($rootScope, cleepService, toastService, ngrokService) {
         };
 
         self.$onInit = function() {
-            cleepService.getModuleConfig('ngrok');
+            cleepService.reloadModuleConfig('ngrok');
+            cleepService.reloadModuleConfig('parameters');
 
             self.serviceButtons.push({
                 icon: 'play',
                 tooltip: 'Start tunnel',
-                click: ngrokService.startTunnel,
+                click: self.startTunnel,
             });
             self.serviceButtons.push({
                 icon: 'stop',
                 tooltip: 'Stop tunnel',
-                click: ngrokService.stopTunnel,
+                click: self.stopTunnel,
             });
+        };
+
+        self.escapeHtml = function(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
         };
 
         self.setAuthKey = function (value) {
@@ -41,7 +51,7 @@ function($rootScope, cleepService, toastService, ngrokService) {
                         toastService.success('Auth key saved, you can start tunnel');
                     }
                 });
-        }
+        };
 
         self.setAutoStart = function (value) {
             ngrokService.setAutoStart(value)
@@ -51,82 +61,120 @@ function($rootScope, cleepService, toastService, ngrokService) {
                         toastService.success(`Auto start ${mode}`);
                     }
                 });
-        }
+        };
 
         self.tunnelInfoToMarkdown = function(metrics) {
-            const connections = [];
-            const durations = [];
-
-            if (metrics.conns || metrics.http) {
-                connections.push('| tunnel | total | /sec 1m | /sec 5m | /sec 15m |');
-                connections.push('| ----- | ----- | ----- | ----- | ----- |');
-                connections.push(`| agent | ${metrics.conns?.count} | ${metrics.conns?.rate1} | ${metrics.conns?.rate5} | ${metrics.conns?.rate15} |`);
-                connections.push(`| http | ${metrics.http?.count} | ${metrics.http?.rate1} | ${metrics.http?.rate5} | ${metrics.http?.rate15} |`);
-
-                durations.push('| tunnel | 50% | 90% | 95% | 99% |');
-                durations.push('| ----- | ----- | ----- | ----- | ----- |');
-                durations.push(`| agent | ${metrics.conns?.p50} | ${metrics.conns?.p90} | ${metrics.conns?.p95} | ${metrics.conns?.p99} |`);
-                durations.push(`| http | ${metrics.http?.p50} | ${metrics.http?.p90} | ${metrics.http?.p95} | ${metrics.http?.p99} |`);
+            if (!metrics || (!metrics.conns && !metrics.http)) {
+                return {
+                    connections: 'No metrics',
+                    durations: 'No metrics',
+                };
             }
+
+            const connections = [
+                '| tunnel | total | /sec 1m | /sec 5m | /sec 15m |',
+                '| ----- | ----- | ----- | ----- | ----- |',
+                `| agent | ${metrics.conns?.count} | ${metrics.conns?.rate1} | ${metrics.conns?.rate5} | ${metrics.conns?.rate15} |`,
+                `| http | ${metrics.http?.count} | ${metrics.http?.rate1} | ${metrics.http?.rate5} | ${metrics.http?.rate15} |`,
+            ];
+            const durations = [
+                '| tunnel | 50% | 90% | 95% | 99% |',
+                '| ----- | ----- | ----- | ----- | ----- |',
+                `| agent | ${metrics.conns?.p50} | ${metrics.conns?.p90} | ${metrics.conns?.p95} | ${metrics.conns?.p99} |`,
+                `| http | ${metrics.http?.p50} | ${metrics.http?.p90} | ${metrics.http?.p95} | ${metrics.http?.p99} |`,
+            ];
 
             return {
                 connections: connections.join('\n'),
-                durations: durations.join('\n')
+                durations: durations.join('\n'),
             };
-        }
+        };
 
         self.getTunnelInfo = function () {
             ngrokService.getTunnelInfo()
                 .then((resp) => {
-                    if (!resp.error) {
-                        self.metrics = self.tunnelInfoToMarkdown(resp.data.metrics);
+                    if (resp.error || !resp.data) {
+                        return;
                     }
+                    self.metrics = self.tunnelInfoToMarkdown(resp.data.metrics);
                 });
-        }
+        };
 
         self.startTunnel = function () {
-            toastService.loading('Launching tunnel')
+            toastService.loading('Launching tunnel');
             ngrokService.startTunnel()
                 .then((resp) => {
                     if (!resp.error) {
-                        toastService.success('Tunnel started')
+                        toastService.success('Tunnel started');
                     }
                 });
-        }
+        };
 
         self.stopTunnel = function () {
             ngrokService.stopTunnel()
                 .then((resp) => {
                     if (!resp.error) {
-                        toastService.success('Tunnel stopped')
+                        toastService.success('Tunnel stopped');
                     }
                 });
-        }
+        };
 
         self.setPublicUrl = function(statusOrUrl) {
-            const isUrl = statusOrUrl.startsWith('http');
-            if (isUrl) {
-                self.publicUrl = `<a href="${self.config.publicurl}" target="_blank">${self.config.publicurl}</a>`;
-            } else if (statusOrUrl === 'STOPPED') {
-                self.publicUrl = 'Tunnel is stopped';
-            } else if (statusOrUrl === 'STARTED') {
-                self.publicUrl = 'Tunnel is started';
-            } else if (statusOrUrl === 'STARTING') {
-                self.publicUrl = 'Tunnel is starting';
-            } else if (statusOrUrl === 'ERROR') {
-                self.publicUrl = 'Error with tunnel';
-            } else {
-                self.publicUrl = statusOrUrl;
-            }
-        }
+            const labels = {
+                STOPPED: 'Tunnel is stopped',
+                STARTED: 'Tunnel is started',
+                STARTING: 'Tunnel is starting',
+                ERROR: 'Error with tunnel',
+            };
 
-        self.setAgentStatus = function(agentError) {
-            if (agentError) {
-                self.agentStatus = agentError.replace(/(\\r\\n|\\n)/gi, '<br/>');
-            } else {
-                self.agentStatus = "Agent is running";
+            if (!statusOrUrl) {
+                self.publicUrl = labels.STOPPED;
+                return;
             }
-        }
+
+            const value = String(statusOrUrl);
+            if (/^https?:\/\//i.test(value)) {
+                const safeUrl = self.escapeHtml(value);
+                self.publicUrl = `<a href="${safeUrl}" target="_blank" rel="noopener">${safeUrl}</a>`;
+                return;
+            }
+
+            self.publicUrl = labels[value] || self.escapeHtml(value);
+        };
+
+        self.openAuthSettings = function() {
+            $location.url('/module/parameters?tab=auth');
+        };
+
+        self.updateAuthState = function(ready) {
+            const enabled = !!ready;
+            self.authSubtitle = enabled
+                ? 'Secured access is enabled'
+                : 'Enable secured access before opening a tunnel';
+            const buttons = [{
+                label: enabled ? 'Enabled' : 'Disabled',
+                icon: enabled ? 'shield-check' : 'shield-off',
+                disabled: true,
+                click: angular.noop,
+            }];
+            if (!enabled) {
+                buttons.push({
+                    label: 'Configure',
+                    icon: 'cog',
+                    tooltip: 'Open secured access settings',
+                    click: self.openAuthSettings,
+                });
+            }
+            self.authButtons = buttons;
+        };
+
+        self.setAgentStatus = function(agentError, agentRunning) {
+            if (agentError) {
+                self.agentStatus = self.escapeHtml(agentError).replace(/(\r\n|\n|\\r\\n|\\n)/g, '<br/>');
+                return;
+            }
+            self.agentStatus = agentRunning ? 'Agent is running' : 'Agent is stopped';
+        };
 
         self.updateBinary = function() {
             ngrokService.updateBinary()
@@ -137,23 +185,45 @@ function($rootScope, cleepService, toastService, ngrokService) {
                 });
         };
 
-        $rootScope.$watch(
-            function() {
-                return cleepService.modules['ngrok'].config;
-            },
-            function(newConfig) {
+        $scope.$watch(
+            () => cleepService.modules.ngrok && cleepService.modules.ngrok.config,
+            (newConfig) => {
                 if (newConfig && Object.keys(newConfig).length) {
                     Object.assign(self.config, newConfig);
                     self.setPublicUrl(self.config.publicurl || self.config.tunnelstatus);
-                    self.setAgentStatus(self.config.agenterror);
+                    self.setAgentStatus(self.config.agenterror, self.config.agentrunning);
                 }
             },
             true
         );
 
-        $rootScope.$on('ngrok.tunnel.update', (event, uuid, params) => {
+        $scope.$watch(
+            () => cleepService.modules.parameters && cleepService.modules.parameters.config,
+            (config) => {
+                if (!config) {
+                    self.updateAuthState(!!self.config.cleepauth);
+                    return;
+                }
+                const accounts = Array.isArray(config.authaccounts) ? config.authaccounts : [];
+                self.updateAuthState(!!config.authenabled && accounts.length > 0);
+            },
+            true
+        );
+
+        $scope.$on('ngrok.tunnel.update', (event, uuid, params) => {
+            if (!params) {
+                return;
+            }
+            if (params.publicurl) {
+                self.config.publicurl = params.publicurl;
+            }
+            if (params.status) {
+                self.config.tunnelstatus = params.status;
+                if (params.status === 'STOPPED' || params.status === 'ERROR') {
+                    self.config.publicurl = params.publicurl || null;
+                }
+            }
             self.setPublicUrl(params.publicurl || params.status);
-            self.setAgentStatus(params.agenterror);
         });
     };
 

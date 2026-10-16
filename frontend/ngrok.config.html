@@ -11,18 +11,24 @@
     ></config-switch>
     <config-button
         cl-title="Update ngrok binary"
-        cl-subtitle="After clicking on the update button ngrok service will updated if necessary without any other action"
+        cl-subtitle="Downloads a newer ngrok program when one is available. A running agent restarts afterwards."
         cl-click="$ctrl.updateBinary()"
         cl-btn-label="Launch update"
         cl-btn-icon="update"
     ></config-button>
 
     <config-section cl-title="Service control" cl-icon="remote"></config-section>
+    <config-buttons
+        cl-title="Cleep authentication"
+        cl-subtitle="{{ $ctrl.authSubtitle }}"
+        cl-icon="shield-lock"
+        cl-buttons="$ctrl.authButtons"
+    ></config-buttons>
     <config-comment
         cl-title="Agent status" cl-comment="$ctrl.agentStatus" cl-mode="html"
     ></config-comment>
     <config-buttons
-        cl-title="Start tunnel" cl-btn-icon="start"
+        cl-title="Tunnel" cl-btn-icon="start"
         cl-buttons="$ctrl.serviceButtons"
     ></config-buttons>
     <config-comment
