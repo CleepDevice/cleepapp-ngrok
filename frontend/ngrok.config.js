@@ -15,10 +15,28 @@ function(cleepService, toastService, ngrokService, $location) {
         self.authSubtitle = '';
         self.publicUrl = '';
         self.agentStatus = '';
-        self.metrics = {
-            connections: 'No metrics',
-            durations: 'No metrics',
-        };
+        self.infoColumns = [
+            { id: 'id', label: 'Id' },
+            { id: 'publicurl', label: 'Public URL' },
+            { id: 'proto', label: 'Protocol' },
+        ];
+        self.infoRows = [];
+        self.connectionsColumns = [
+            { id: 'tunnel', label: 'Tunnel' },
+            { id: 'total', label: 'Total' },
+            { id: 'rate1', label: '/sec 1m' },
+            { id: 'rate5', label: '/sec 5m' },
+            { id: 'rate15', label: '/sec 15m' },
+        ];
+        self.connectionsRows = [];
+        self.durationsColumns = [
+            { id: 'tunnel', label: 'Tunnel' },
+            { id: 'p50', label: '50%' },
+            { id: 'p90', label: '90%' },
+            { id: 'p95', label: '95%' },
+            { id: 'p99', label: '99%' },
+        ];
+        self.durationsRows = [];
 
         self.$onInit = function() {
             cleepService.reloadModuleConfig('ngrok');
@@ -63,31 +81,57 @@ function(cleepService, toastService, ngrokService, $location) {
                 });
         };
 
-        self.tunnelInfoToMarkdown = function(metrics) {
-            if (!metrics || (!metrics.conns && !metrics.http)) {
-                return {
-                    connections: 'No metrics',
-                    durations: 'No metrics',
-                };
+        self.metricRow = function(tunnel, metrics, fields) {
+            const row = { tunnel: tunnel };
+            fields.forEach((field) => {
+                row[field.id] = metrics?.[field.src] ?? '';
+            });
+            return row;
+        };
+
+        self.applyTunnelInfo = function(data) {
+            self.infoRows = [{
+                id: data.id || '',
+                publicurl: data.publicurl || '',
+                proto: data.proto || '',
+            }];
+
+            const metrics = data.metrics || {};
+            const hasMetrics = metrics.conns || metrics.http;
+            if (!hasMetrics) {
+                self.connectionsRows = [];
+                self.durationsRows = [];
+                return;
             }
 
-            const connections = [
-                '| tunnel | total | /sec 1m | /sec 5m | /sec 15m |',
-                '| ----- | ----- | ----- | ----- | ----- |',
-                `| agent | ${metrics.conns?.count} | ${metrics.conns?.rate1} | ${metrics.conns?.rate5} | ${metrics.conns?.rate15} |`,
-                `| http | ${metrics.http?.count} | ${metrics.http?.rate1} | ${metrics.http?.rate5} | ${metrics.http?.rate15} |`,
+            self.connectionsRows = [
+                self.metricRow('agent', metrics.conns, [
+                    { id: 'total', src: 'count' },
+                    { id: 'rate1', src: 'rate1' },
+                    { id: 'rate5', src: 'rate5' },
+                    { id: 'rate15', src: 'rate15' },
+                ]),
+                self.metricRow('http', metrics.http, [
+                    { id: 'total', src: 'count' },
+                    { id: 'rate1', src: 'rate1' },
+                    { id: 'rate5', src: 'rate5' },
+                    { id: 'rate15', src: 'rate15' },
+                ]),
             ];
-            const durations = [
-                '| tunnel | 50% | 90% | 95% | 99% |',
-                '| ----- | ----- | ----- | ----- | ----- |',
-                `| agent | ${metrics.conns?.p50} | ${metrics.conns?.p90} | ${metrics.conns?.p95} | ${metrics.conns?.p99} |`,
-                `| http | ${metrics.http?.p50} | ${metrics.http?.p90} | ${metrics.http?.p95} | ${metrics.http?.p99} |`,
+            self.durationsRows = [
+                self.metricRow('agent', metrics.conns, [
+                    { id: 'p50', src: 'p50' },
+                    { id: 'p90', src: 'p90' },
+                    { id: 'p95', src: 'p95' },
+                    { id: 'p99', src: 'p99' },
+                ]),
+                self.metricRow('http', metrics.http, [
+                    { id: 'p50', src: 'p50' },
+                    { id: 'p90', src: 'p90' },
+                    { id: 'p95', src: 'p95' },
+                    { id: 'p99', src: 'p99' },
+                ]),
             ];
-
-            return {
-                connections: connections.join('\n'),
-                durations: durations.join('\n'),
-            };
         };
 
         self.getTunnelInfo = function () {
@@ -96,7 +140,7 @@ function(cleepService, toastService, ngrokService, $location) {
                     if (resp.error || !resp.data) {
                         return;
                     }
-                    self.metrics = self.tunnelInfoToMarkdown(resp.data.metrics);
+                    self.applyTunnelInfo(resp.data);
                 });
         };
 

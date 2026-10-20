@@ -99,6 +99,16 @@ class TestNgrok(unittest.TestCase):
         if start:
             self.session.start_module(self.module)
 
+    def test_on_start_schedules_agent_bootstrap(self, console_mock):
+        self.init(start=False, mock_on_start=False)
+        self.session.task_factory.create_task = Mock()
+
+        self.module._on_start()
+
+        self.session.task_factory.create_task.assert_called_once_with(
+            None, self.module._Ngrok__bootstrap_agent_and_tunnel
+        )
+
     def test_on_start_should_start_tunnel(self, console_mock):
         self.init(start=False, mock_on_start=False)
         self.module._Ngrok__install_agent = Mock(return_value=True)
@@ -108,7 +118,7 @@ class TestNgrok(unittest.TestCase):
         self.module._Ngrok__is_cleep_auth_ready = Mock(return_value=True)
         self.session.task_factory.create_task = Mock()
 
-        self.module._on_start()
+        self.module._Ngrok__bootstrap_agent_and_tunnel()
 
         self.session.task_factory.create_task.assert_called_with(120.0, AnyArg())
 
@@ -121,7 +131,7 @@ class TestNgrok(unittest.TestCase):
         self.module._Ngrok__is_cleep_auth_ready = Mock(return_value=False)
         self.session.task_factory.create_task = Mock()
 
-        self.module._on_start()
+        self.module._Ngrok__bootstrap_agent_and_tunnel()
 
         self.session.task_factory.create_task.assert_not_called()
         self.assertEqual(
@@ -135,7 +145,7 @@ class TestNgrok(unittest.TestCase):
         self.module._Ngrok__install_agent = Mock(return_value=False)
         self.session.task_factory.create_task = Mock()
 
-        self.module._on_start()
+        self.module._Ngrok__bootstrap_agent_and_tunnel()
 
         self.session.task_factory.create_task.assert_not_called()
 
@@ -147,7 +157,7 @@ class TestNgrok(unittest.TestCase):
         self.module._Ngrok__start_agent = Mock(return_value=False)
         self.session.task_factory.create_task = Mock()
 
-        self.module._on_start()
+        self.module._Ngrok__bootstrap_agent_and_tunnel()
 
         self.session.task_factory.create_task.assert_not_called()
 
@@ -158,7 +168,7 @@ class TestNgrok(unittest.TestCase):
         self.module._get_config_field = Mock(side_effect=[False])
         self.session.task_factory.create_task = Mock()
 
-        self.module._on_start()
+        self.module._Ngrok__bootstrap_agent_and_tunnel()
 
         self.session.task_factory.create_task.assert_not_called()
 
@@ -172,7 +182,7 @@ class TestNgrok(unittest.TestCase):
         self.module._Ngrok__start_agent = Mock(return_value=False)
         self.session.task_factory.create_task = Mock()
 
-        self.module._on_start()
+        self.module._Ngrok__bootstrap_agent_and_tunnel()
 
         self.session.task_factory.create_task.assert_not_called()
 
@@ -190,7 +200,7 @@ class TestNgrok(unittest.TestCase):
         self.module.register_remote_access_url = Mock(return_value=True)
         self.session.task_factory.create_task = Mock()
 
-        self.module._on_start()
+        self.module._Ngrok__bootstrap_agent_and_tunnel()
 
         self.session.task_factory.create_task.assert_not_called()
         self.assertEqual(self.module._Ngrok__tunnel_status, Ngrok.TUNNEL_STARTED)
@@ -942,6 +952,45 @@ class TestNgrok(unittest.TestCase):
 
         self.assertFalse(result)
         self.assertEqual(self.module._Ngrok__last_agent_error, "stdout\nstderr")
+
+    def test__start_agent_command_failed_empty_output(self, console_mock):
+        self.init()
+        command_mock = Mock(
+            return_value={"returncode": 1, "stdout": [], "stderr": []}
+        )
+        console_mock.return_value.command = command_mock
+        self.module._get_config_field = Mock(return_value="auth-key")
+        self.module._Ngrok__is_agent_running = Mock(return_value=False)
+        self.module._Ngrok__ensure_localhost_web_addr = Mock(return_value=False)
+        self.module._Ngrok__read_recent_agent_error = Mock(return_value=None)
+
+        with patch.object(self.module.logger, "error") as error_mock:
+            result = self.module._Ngrok__start_agent()
+
+        self.assertFalse(result)
+        expected = "Unable to start ngrok agent (returncode=1)"
+        self.assertEqual(self.module._Ngrok__last_agent_error, expected)
+        error_mock.assert_called_with("Unable to start ngrok agent: %s", expected)
+
+    def test__start_agent_command_failed_uses_journal(self, console_mock):
+        self.init()
+        command_mock = Mock(
+            return_value={"returncode": 1, "stdout": [], "stderr": []}
+        )
+        console_mock.return_value.command = command_mock
+        self.module._get_config_field = Mock(return_value="auth-key")
+        self.module._Ngrok__is_agent_running = Mock(return_value=False)
+        self.module._Ngrok__ensure_localhost_web_addr = Mock(return_value=False)
+        self.module._Ngrok__read_recent_agent_error = Mock(
+            return_value="ERR_NGROK_108: invalid authtoken"
+        )
+
+        result = self.module._Ngrok__start_agent()
+
+        self.assertFalse(result)
+        self.assertEqual(
+            self.module._Ngrok__last_agent_error, "ERR_NGROK_108: invalid authtoken"
+        )
 
     def test__start_agent_should_not_start_agent_if_already_running(self, console_mock):
         self.init()

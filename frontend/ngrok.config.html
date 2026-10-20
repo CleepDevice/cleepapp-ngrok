@@ -39,12 +39,24 @@
     <config-button
         cl-icon="" cl-btn-icon="refresh" cl-click="$ctrl.getTunnelInfo()" cl-btn-label="Get info"
     ></config-button>
-    <config-comment
-        cl-title="Tunnel connections metrics" cl-comment="$ctrl.metrics.connections" cl-mode="markdown"
-    ></config-comment>
-    <config-comment
-        cl-title="Tunnel durations metrics (in seconds)" cl-comment="$ctrl.metrics.durations" cl-mode="markdown"
-    ></config-comment>
+    <config-table
+        cl-title="Tunnel" cl-subtitle="Current public endpoint"
+        cl-icon="wan"
+        cl-columns="$ctrl.infoColumns"
+        cl-rows="$ctrl.infoRows"
+    ></config-table>
+    <config-table
+        cl-title="Connections" cl-subtitle="Rates and totals"
+        cl-icon="chart-line"
+        cl-columns="$ctrl.connectionsColumns"
+        cl-rows="$ctrl.connectionsRows"
+    ></config-table>
+    <config-table
+        cl-title="Durations" cl-subtitle="Percentiles in seconds"
+        cl-icon="timer"
+        cl-columns="$ctrl.durationsColumns"
+        cl-rows="$ctrl.durationsRows"
+    ></config-table>
 
 </div>
     

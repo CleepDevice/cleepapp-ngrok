@@ -1,20 +1,23 @@
 # Changelog
 
-## [1.2.0] - 2026-10-16
+## [Unreleased]
 
 ## Added
 
 - Require Cleep auth enabled to start tunnel
 - Open the tunnel over HTTPS only, disable request inspection, and keep the agent interface on localhost
 - Publish the tunnel public address while it is open
+- Show tunnel get-info result with config-table (tunnel fields + connection/duration metrics)
 
 ## Changed
 
 - General app improvements
+- Defer agent/tunnel bootstrap out of blocking `_on_start` (keeps bus responsive at boot)
 
 ### Fixed
 
 - Fix some issues
+- Log a useful message when ``ngrok service start`` fails with empty stdout/stderr (journal or returncode)
 
 ## [1.1.0] - 2025-11-20
 

@@ -65,6 +65,7 @@ class Ngrok(CleepRemoteAccessModule):
         self.__agent_bin = os.path.join(self.APP_BIN_PATH, self.AGENT_BIN)
         self.__agent_config = os.path.join(self.APP_BIN_PATH, self.AGENT_CONFIG)
         self.__start_tunnel_task = None
+        self.__agent_bootstrap_task = None
         self.__last_agent_error = None
         self.__binary_update_std = []
         self.__binary_update_running = False
@@ -73,8 +74,16 @@ class Ngrok(CleepRemoteAccessModule):
 
     def _on_start(self):
         """
-        Start app
+        Start app — defer agent/tunnel work so blocking Console calls do not
+        starve the gevent hub during inventory startup.
         """
+        self.__agent_bootstrap_task = self.task_factory.create_task(
+            None, self.__bootstrap_agent_and_tunnel
+        )
+        self.__agent_bootstrap_task.start()
+
+    def __bootstrap_agent_and_tunnel(self):
+        """Install/start agent and optionally schedule tunnel autoconnect."""
         if not self.__install_agent():
             return
 
@@ -666,7 +675,7 @@ class Ngrok(CleepRemoteAccessModule):
             if resp["returncode"] != 0:
                 self.logger.error(
                     "Unable to install ngrok agent: %s",
-                    "\n".join(resp["stdout"] + resp["stderr"]),
+                    self.__format_agent_command_error("install", resp),
                 )
                 self.__remove_broken_service_unit()
                 return False
@@ -791,14 +800,38 @@ class Ngrok(CleepRemoteAccessModule):
         self.logger.debug("Start agent cmd: %s, resp: %s", cmd, resp)
 
         if resp["returncode"] != 0:
-            message = "\n".join(resp.get("stdout", []) + resp.get("stderr", []))
-            self.__last_agent_error = message or "Unable to start ngrok agent"
+            message = self.__format_agent_command_error("start", resp)
+            self.__last_agent_error = message
             self.logger.error("Unable to start ngrok agent: %s", message)
             return False
 
         self.__last_agent_error = None
         self.logger.info("Ngrok agent started successfully")
         return True
+
+    def __format_agent_command_error(self, action, resp):
+        """
+        Build a non-empty error string from a failed agent Console command.
+
+        ``ngrok service …`` often exits non-zero with empty stdout/stderr; fall
+        back to the journal then to the return code.
+
+        Args:
+            action (str): failed action label (start, stop, install)
+            resp (dict): Console.command result
+
+        Returns:
+            str: error message suitable for logs and UI
+        """
+        parts = list(resp.get("stdout") or []) + list(resp.get("stderr") or [])
+        message = "\n".join(parts).strip()
+        if message:
+            return message
+        journal = self.__read_recent_agent_error()
+        if journal:
+            return journal
+        returncode = resp.get("returncode")
+        return "Unable to %s ngrok agent (returncode=%s)" % (action, returncode)
 
     def __stop_agent(self):
         """
@@ -824,7 +857,7 @@ class Ngrok(CleepRemoteAccessModule):
         if resp["returncode"] != 0:
             self.logger.error(
                 "Unable to stop ngrok agent: %s",
-                "\n".join(resp["stdout"] + resp["stderr"]),
+                self.__format_agent_command_error("stop", resp),
             )
             return False
 
